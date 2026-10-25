@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.media.AudioManager;
 import android.os.Environment;
 import android.text.TextUtils;
@@ -82,13 +84,25 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         return mActivity;
     }
 
+    private boolean isTelevisionDevice() {
+        int type = mActivity.getResources().getConfiguration().uiMode & Configuration.UI_MODE_TYPE_MASK;
+        return type == Configuration.UI_MODE_TYPE_TELEVISION ||
+            mActivity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
+    }
+
     /**
      * Should be called when mActivity.onCreate() is called
      */
     public void onCreate() {
         onReloadProperties();
 
-        mActivity.getTerminalView().setTextSize(mActivity.getPreferences().getFontSize());
+        int fontSize = mActivity.getPreferences().getFontSize();
+        if (isTelevisionDevice() && !mActivity.getPreferences().hasFontSizePreference()) {
+            float density = mActivity.getResources().getDisplayMetrics().density;
+            fontSize = Math.max(fontSize, Math.round(16f * density));
+            mActivity.getPreferences().setFontSize(fontSize);
+        }
+        mActivity.getTerminalView().setTextSize(fontSize);
         mActivity.getTerminalView().setKeepScreenOn(mActivity.getPreferences().shouldKeepScreenOn());
     }
 
@@ -240,6 +254,19 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent e, TerminalSession currentSession) {
         if (handleVirtualKeys(keyCode, e, true)) return true;
+
+        if (isTelevisionDevice() && keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
+            if (e.getRepeatCount() == 0) showSoftKeyboardForTelevision();
+            return true;
+        }
+        if (isTelevisionDevice() && keyCode == KeyEvent.KEYCODE_MENU) {
+            if (e.getRepeatCount() == 0) {
+                DrawerLayout drawer = mActivity.getDrawer();
+                if (drawer.isDrawerOpen(Gravity.LEFT)) drawer.closeDrawer(Gravity.LEFT);
+                else drawer.openDrawer(Gravity.LEFT);
+            }
+            return true;
+        }
 
         if (keyCode == KeyEvent.KEYCODE_ENTER && !currentSession.isRunning()) {
             mTermuxTerminalSessionActivityClient.removeFinishedSession(currentSession);
@@ -563,6 +590,16 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                 KeyboardUtils.toggleSoftKeyboard(mActivity);
             }
         }
+    }
+
+    public void showSoftKeyboardForTelevision() {
+        if (!isTelevisionDevice()) return;
+        mActivity.getPreferences().setSoftKeyboardEnabled(true);
+        KeyboardUtils.clearDisableSoftKeyboardFlags(mActivity);
+        KeyboardUtils.setSoftInputModeAdjustResize(mActivity);
+        mActivity.getTerminalView().requestFocus();
+        mActivity.getTerminalView().postDelayed(
+            () -> KeyboardUtils.showSoftKeyboard(mActivity, mActivity.getTerminalView()), 150);
     }
 
     public void setSoftKeyboardState(boolean isStartup, boolean isReloadTermuxProperties) {

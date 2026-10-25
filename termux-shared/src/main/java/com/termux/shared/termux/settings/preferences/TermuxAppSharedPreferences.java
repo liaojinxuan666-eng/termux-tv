@@ -151,6 +151,10 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         MAX_FONTSIZE = sizes[2];
     }
 
+    public boolean hasFontSizePreference() {
+        return mSharedPreferences.contains(TERMUX_APP.KEY_FONTSIZE);
+    }
+
     public int getFontSize() {
         int fontSize = SharedPreferenceUtils.getIntStoredAsString(mSharedPreferences, TERMUX_APP.KEY_FONTSIZE, DEFAULT_FONTSIZE);
         return DataUtils.clamp(fontSize, MIN_FONTSIZE, MAX_FONTSIZE);
