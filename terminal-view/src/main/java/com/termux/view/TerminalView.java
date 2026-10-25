@@ -6,6 +6,8 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Typeface;
 import android.os.Build;
@@ -305,6 +307,13 @@ public final class TerminalView extends View {
         return true;
     }
 
+    /** TV IMEs often require a text-class connection to commit characters. */
+    private boolean isTelevisionDevice() {
+        int type = getResources().getConfiguration().uiMode & Configuration.UI_MODE_TYPE_MASK;
+        return type == Configuration.UI_MODE_TYPE_TELEVISION ||
+            getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
+    }
+
     @Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
         // Ensure that inputType is only set if TerminalView is selected view with the keyboard and
@@ -312,7 +321,10 @@ public final class TerminalView extends View {
         // initially started with the alternate view or if activity is returned to from another app
         // and the alternate view was the one selected the last time.
         if (mClient.isTerminalViewSelected()) {
-            if (mClient.shouldEnforceCharBasedInput()) {
+            if (isTelevisionDevice()) {
+                outAttrs.inputType = InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD |
+                    InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+            } else if (mClient.shouldEnforceCharBasedInput()) {
                 // Some keyboards seems do not reset the internal state on TYPE_NULL.
                 // Affects mostly Samsung stock keyboards.
                 // https://github.com/termux/termux-app/issues/686
