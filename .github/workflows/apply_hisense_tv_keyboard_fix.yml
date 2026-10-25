@@ -1,0 +1,165 @@
+name: Apply Hisense TV keyboard fix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  patch-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Apply TV input and remote-navigation fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def patch(path, old, new):
+              p = Path(path)
+              data = p.read_text(encoding='utf-8')
+              count = data.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one match, got {count}; no commit made')
+              p.write_text(data.replace(old, new, 1), encoding='utf-8')
+              print('patched', path)
+
+          tv = 'terminal-view/src/main/java/com/termux/view/TerminalView.java'
+          patch(tv, '''import android.content.Context;
+          import android.graphics.Canvas;''', '''import android.content.Context;
+          import android.content.pm.PackageManager;
+          import android.content.res.Configuration;
+          import android.graphics.Canvas;''')
+          patch(tv, '''    @Override
+              public InputConnection onCreateInputConnection(EditorInfo outAttrs) {''', '''    /** TV IMEs often require a text-class connection to commit characters. */
+              private boolean isTelevisionDevice() {
+                  int type = getResources().getConfiguration().uiMode & Configuration.UI_MODE_TYPE_MASK;
+                  return type == Configuration.UI_MODE_TYPE_TELEVISION ||
+                      getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
+              }
+
+              @Override
+              public InputConnection onCreateInputConnection(EditorInfo outAttrs) {''')
+          patch(tv, '''        if (mClient.isTerminalViewSelected()) {
+                      if (mClient.shouldEnforceCharBasedInput()) {''', '''        if (mClient.isTerminalViewSelected()) {
+                      if (isTelevisionDevice()) {
+                          outAttrs.inputType = InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD |
+                              InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+                      } else if (mClient.shouldEnforceCharBasedInput()) {''')
+
+          client = 'app/src/main/java/com/termux/app/terminal/TermuxTerminalViewClient.java'
+          patch(client, '''import android.content.Context;
+          import android.media.AudioManager;''', '''import android.content.Context;
+          import android.content.pm.PackageManager;
+          import android.content.res.Configuration;
+          import android.media.AudioManager;''')
+          patch(client, '''    public TermuxActivity getActivity() {
+                  return mActivity;
+              }''', '''    public TermuxActivity getActivity() {
+                  return mActivity;
+              }
+
+              private boolean isTelevisionDevice() {
+                  int type = mActivity.getResources().getConfiguration().uiMode & Configuration.UI_MODE_TYPE_MASK;
+                  return type == Configuration.UI_MODE_TYPE_TELEVISION ||
+                      mActivity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
+              }''')
+          patch(client, '''    public void onCreate() {
+                  onReloadProperties();
+
+                  mActivity.getTerminalView().setTextSize(mActivity.getPreferences().getFontSize());''', '''    public void onCreate() {
+                  onReloadProperties();
+
+                  int fontSize = mActivity.getPreferences().getFontSize();
+                  if (isTelevisionDevice() && !mActivity.getPreferences().hasFontSizePreference()) {
+                      float density = mActivity.getResources().getDisplayMetrics().density;
+                      fontSize = Math.max(fontSize, Math.round(16f * density));
+                      mActivity.getPreferences().setFontSize(fontSize);
+                  }
+                  mActivity.getTerminalView().setTextSize(fontSize);''')
+          patch(client, '''        if (handleVirtualKeys(keyCode, e, true)) return true;
+
+                  if (keyCode == KeyEvent.KEYCODE_ENTER && !currentSession.isRunning()) {''', '''        if (handleVirtualKeys(keyCode, e, true)) return true;
+
+                  if (isTelevisionDevice() && keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
+                      if (e.getRepeatCount() == 0) showSoftKeyboardForTelevision();
+                      return true;
+                  }
+                  if (isTelevisionDevice() && keyCode == KeyEvent.KEYCODE_MENU) {
+                      if (e.getRepeatCount() == 0) {
+                          DrawerLayout drawer = mActivity.getDrawer();
+                          if (drawer.isDrawerOpen(Gravity.LEFT)) drawer.closeDrawer(Gravity.LEFT);
+                          else drawer.openDrawer(Gravity.LEFT);
+                      }
+                      return true;
+                  }
+
+                  if (keyCode == KeyEvent.KEYCODE_ENTER && !currentSession.isRunning()) {''')
+          patch(client, '''    public void setSoftKeyboardState(boolean isStartup, boolean isReloadTermuxProperties) {''', '''    public void showSoftKeyboardForTelevision() {
+                  if (!isTelevisionDevice()) return;
+                  mActivity.getPreferences().setSoftKeyboardEnabled(true);
+                  KeyboardUtils.clearDisableSoftKeyboardFlags(mActivity);
+                  KeyboardUtils.setSoftInputModeAdjustResize(mActivity);
+                  mActivity.getTerminalView().requestFocus();
+                  mActivity.getTerminalView().postDelayed(
+                      () -> KeyboardUtils.showSoftKeyboard(mActivity, mActivity.getTerminalView()), 150);
+              }
+
+              public void setSoftKeyboardState(boolean isStartup, boolean isReloadTermuxProperties) {''')
+
+          prefs = 'termux-shared/src/main/java/com/termux/shared/termux/settings/preferences/TermuxAppSharedPreferences.java'
+          patch(prefs, '''    public int getFontSize() {
+                  int fontSize = SharedPreferenceUtils.getIntStoredAsString(mSharedPreferences, TERMUX_APP.KEY_FONTSIZE, DEFAULT_FONTSIZE);''', '''    public boolean hasFontSizePreference() {
+                  return mSharedPreferences.contains(TERMUX_APP.KEY_FONTSIZE);
+              }
+
+              public int getFontSize() {
+                  int fontSize = SharedPreferenceUtils.getIntStoredAsString(mSharedPreferences, TERMUX_APP.KEY_FONTSIZE, DEFAULT_FONTSIZE);''')
+
+          layout = 'app/src/main/res/layout/activity_termux.xml'
+          patch(layout, '''                android:descendantFocusability="blocksDescendants"
+          ''', '')
+          PY
+          git diff --check
+
+      - name: Build debug APKs
+        env:
+          TERMUX_PACKAGE_VARIANT: apt-android-7
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: termux-tv-hisense-keyboard-debug-apks
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+      - name: Push fix branch and create pull request
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          BRANCH='tv/hisense-keyboard-fix'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C "$BRANCH"
+          git add terminal-view/src/main/java/com/termux/view/TerminalView.java app/src/main/java/com/termux/app/terminal/TermuxTerminalViewClient.java termux-shared/src/main/java/com/termux/shared/termux/settings/preferences/TermuxAppSharedPreferences.java app/src/main/res/layout/activity_termux.xml
+          git commit -m 'Fix Android TV terminal input and remote navigation'
+          git push --force origin "$BRANCH"
+          gh pr view "$BRANCH" --json number >/dev/null 2>&1 || gh pr create --base master --head "$BRANCH" --title 'Fix Hisense Android TV terminal input' --body 'Improves TV IME input, remote select/menu navigation, first-run font size, and drawer focusability. Built by the repository workflow.' || echo 'Branch pushed; create a pull request manually if repository policy blocks PR creation.'
