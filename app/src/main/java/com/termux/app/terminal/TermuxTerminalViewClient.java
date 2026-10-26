@@ -250,10 +250,22 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
 
 
+    private boolean isTvRemoteNavigationEvent(KeyEvent event) {
+        InputDevice device = event.getDevice();
+        return device == null || device.getKeyboardType() != InputDevice.KEYBOARD_TYPE_ALPHABETIC;
+    }
+
     @SuppressLint("RtlHardcoded")
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent e, TerminalSession currentSession) {
         if (handleVirtualKeys(keyCode, e, true)) return true;
+
+        if (isTelevisionDevice() && isTvRemoteNavigationEvent(e) &&
+            (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN)) {
+            mActivity.getTerminalView().scrollByRowsFromTvRemote(
+                keyCode == KeyEvent.KEYCODE_DPAD_UP ? -3 : 3);
+            return true;
+        }
 
         if (isTelevisionDevice() && keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
             if (e.getRepeatCount() == 0) showSoftKeyboardForTelevision();

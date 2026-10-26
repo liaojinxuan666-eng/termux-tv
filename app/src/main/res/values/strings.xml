@@ -235,4 +235,10 @@
     <!-- Donate Preference -->
     <string name="donate_preference_title">Donate</string>
 
+    <string name="tv_shortcuts_button">TV shortcuts</string>
+    <string name="tv_shortcuts_title">TV remote and keyboard shortcuts</string>
+    <string name="tv_shortcuts_message">Remote: Up/Down scrolls terminal history; Select opens the keyboard; Menu toggles the session drawer. Keyboard: Ctrl+Alt+N/P switches sessions; Ctrl+Alt+C creates a session; Ctrl+Alt+K toggles the keyboard; Ctrl+Alt+V pastes; Ctrl+Alt+Plus/Minus changes font size; Ctrl+Alt+1–9 switches sessions.</string>
+    <string name="tv_performance_category">TV performance</string>
+    <string name="tv_memory_profile_title">Terminal history memory</string>
+    <string name="tv_memory_profile_summary">Applies to new sessions. Less history usually uses less memory.</string>
 </resources>

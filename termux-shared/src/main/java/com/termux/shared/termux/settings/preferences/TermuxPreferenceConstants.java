@@ -130,6 +130,10 @@ public final class TermuxPreferenceConstants {
          */
         public static final String KEY_FONTSIZE = "fontsize";
 
+        /** Scrollback memory profile for Android TV terminal sessions. */
+        public static final String KEY_TV_MEMORY_PROFILE = "tv_memory_profile";
+        public static final String DEFAULT_VALUE_TV_MEMORY_PROFILE = "balanced";
+
 
         /**
          * Defines the key for current termux terminal session.

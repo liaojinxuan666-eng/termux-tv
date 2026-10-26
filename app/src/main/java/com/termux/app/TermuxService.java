@@ -7,6 +7,8 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.net.wifi.WifiManager;
 import android.os.Binder;
@@ -571,6 +573,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     /** Create a {@link TermuxSession}. */
+    private boolean isTelevisionDevice() {
+        int type = getResources().getConfiguration().uiMode & Configuration.UI_MODE_TYPE_MASK;
+        return type == Configuration.UI_MODE_TYPE_TELEVISION ||
+            getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
+    }
+
     @Nullable
     public synchronized TermuxSession createTermuxSession(ExecutionCommand executionCommand) {
         if (executionCommand == null) return null;
@@ -583,7 +591,18 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         }
 
         executionCommand.setShellCommandShellEnvironment = true;
-        executionCommand.terminalTranscriptRows = mProperties.getTerminalTranscriptRows();
+        int transcriptRows = mProperties.getTerminalTranscriptRows();
+        if (isTelevisionDevice()) {
+            TermuxAppSharedPreferences tvPreferences = TermuxAppSharedPreferences.build(this, false);
+            if (tvPreferences != null) {
+                String profile = tvPreferences.getTvMemoryProfile();
+                if ("low".equals(profile)) transcriptRows = 500;
+                else if ("balanced".equals(profile)) transcriptRows = 1500;
+                else if ("history".equals(profile)) transcriptRows = 5000;
+                // "system" preserves terminal-transcript-rows from termux.properties.
+            }
+        }
+        executionCommand.terminalTranscriptRows = transcriptRows;
 
         if (Logger.getLogLevel() >= Logger.LOG_LEVEL_VERBOSE)
             Logger.logVerboseExtended(LOG_TAG, executionCommand.toString());
