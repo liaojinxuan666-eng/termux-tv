@@ -9,6 +9,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -250,6 +252,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setNewSessionButtonView();
 
         setToggleKeyboardView();
+        setTvShortcutsButtonView();
 
         registerForContextMenu(mTerminalView);
 
@@ -580,6 +583,24 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 -1, null, null);
             return true;
         });
+    }
+
+    private boolean isTelevisionDeviceForActivity() {
+        int type = getResources().getConfiguration().uiMode & Configuration.UI_MODE_TYPE_MASK;
+        return type == Configuration.UI_MODE_TYPE_TELEVISION ||
+            getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
+    }
+
+    private void setTvShortcutsButtonView() {
+        View button = findViewById(R.id.tv_shortcuts_button);
+        if (button == null) return;
+        boolean tv = isTelevisionDeviceForActivity();
+        button.setVisibility(tv ? View.VISIBLE : View.GONE);
+        button.setOnClickListener(v -> new AlertDialog.Builder(TermuxActivity.this)
+            .setTitle(R.string.tv_shortcuts_title)
+            .setMessage(R.string.tv_shortcuts_message)
+            .setPositiveButton(android.R.string.ok, null)
+            .show());
     }
 
     private void setToggleKeyboardView() {

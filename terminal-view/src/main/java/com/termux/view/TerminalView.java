@@ -601,6 +601,18 @@ public final class TerminalView extends View {
         }
     }
 
+    /** Scroll the terminal using the same path as touch and mouse-wheel input. */
+    public void scrollByRowsFromTvRemote(int rowsDown) {
+        if (mEmulator == null || rowsDown == 0) return;
+        long now = SystemClock.uptimeMillis();
+        MotionEvent event = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, 0f, 0f, 0);
+        try {
+            doScroll(event, rowsDown);
+        } finally {
+            event.recycle();
+        }
+    }
+
     /** Overriding {@link View#onGenericMotionEvent(MotionEvent)}. */
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {

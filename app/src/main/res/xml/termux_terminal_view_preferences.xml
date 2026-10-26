@@ -12,4 +12,17 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory
+        app:key="tv_performance"
+        app:title="@string/tv_performance_category">
+        <ListPreference
+            app:key="tv_memory_profile"
+            app:defaultValue="balanced"
+            app:entries="@array/tv_memory_profile_entries"
+            app:entryValues="@array/tv_memory_profile_values"
+            app:title="@string/tv_memory_profile_title"
+            app:summary="@string/tv_memory_profile_summary"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
 </PreferenceScreen>

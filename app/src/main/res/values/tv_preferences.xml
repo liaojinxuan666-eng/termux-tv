@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="tv_memory_profile_entries">
+        <item>Low memory (500 lines)</item>
+        <item>Balanced (1,500 lines)</item>
+        <item>Long history (5,000 lines)</item>
+        <item>Use termux.properties</item>
+    </string-array>
+    <string-array name="tv_memory_profile_values">
+        <item>low</item><item>balanced</item><item>history</item><item>system</item>
+    </string-array>
+</resources>

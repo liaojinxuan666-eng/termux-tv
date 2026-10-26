@@ -173,6 +173,20 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         setFontSize(fontSize);
     }
 
+    public String getTvMemoryProfile() {
+        String value = mSharedPreferences.getString(
+            TERMUX_APP.KEY_TV_MEMORY_PROFILE, TERMUX_APP.DEFAULT_VALUE_TV_MEMORY_PROFILE);
+        if ("low".equals(value) || "balanced".equals(value) ||
+            "history".equals(value) || "system".equals(value)) return value;
+        return TERMUX_APP.DEFAULT_VALUE_TV_MEMORY_PROFILE;
+    }
+
+    public void setTvMemoryProfile(String value) {
+        if (!("low".equals(value) || "balanced".equals(value) ||
+            "history".equals(value) || "system".equals(value))) return;
+        mSharedPreferences.edit().putString(TERMUX_APP.KEY_TV_MEMORY_PROFILE, value).apply();
+    }
+
 
 
     public String getCurrentSession() {

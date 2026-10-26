@@ -89,6 +89,20 @@
                         android:layout_weight="1"
                         android:text="@string/action_new_session" />
                 </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/tv_shortcuts_button"
+                        style="?android:attr/buttonBarButtonStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/tv_shortcuts_button"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true" />
+                </LinearLayout>
             </LinearLayout>
 
         </androidx.drawerlayout.widget.DrawerLayout>
